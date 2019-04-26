@@ -108,10 +108,17 @@ class GpsConsumer implements Consumer
         return $this->subscription;
     }
 
-    private function convertMessage(GoogleMessage $message): GpsMessage
+    private function convertMessage(GoogleMessage $message): ?GpsMessage
     {
-        $gpsMessage = GpsMessage::jsonUnserialize($message->data());
-        $gpsMessage->setNativeMessage($message);
+        try {
+            $gpsMessage = GpsMessage::jsonUnserialize($message->data());
+            $gpsMessage->setNativeMessage($message);
+        }
+        catch (\InvalidArgumentException $e) {
+            // Message is not valid, we need to reject it and make sure it is not requeued
+            $this->getSubscription()->acknowledge($message);
+            return null;
+        }
 
         return $gpsMessage;
     }
